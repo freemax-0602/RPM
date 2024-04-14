@@ -1,0 +1,77 @@
+---
+- name: Installing lib for build
+  yum:
+    name: "{{ item }}"
+    state: "present"
+  loop:
+    - redhat-lsb-core
+    - wget
+    - rpmdevtools 
+    - rpm-build 
+    - createrepo
+    - yum-utils
+    - gcc
+    - openssl-devel
+    - zlib-devel
+    - pcre-devel
+
+- name: Get source files nginx
+  get_url:
+    url: https://nginx.org/packages/centos/8/SRPMS/nginx-1.20.2-1.el8.ngx.src.rpm
+    dest: /root/
+
+- name: Create rpm folder
+  shell: "rpm -i nginx-1*"
+
+- name: Uzip OpenSSL sources
+  unarchive:
+    src: https://github.com/openssl/openssl/archive/refs/heads/OpenSSL_1_1_1-stable.zip
+    dest: /root/
+    remote_src: yes
+
+- name: Castomize SPEC file
+  lineinfile:
+    path: /root/rpmbuild/SPECS/nginx.spec
+    regexp: --with-debug 
+    line: '    --with-openssl=/root/openssl-OpenSSL_1_1_1-stable'
+
+- name: Build nginx
+  shell: "rpmbuild -bb rpmbuild/SPECS/nginx.spec"
+
+- name: Install castomize build nginx
+  yum:
+    name: /root/rpmbuild/RPMS/x86_64/nginx-1.20.2-1.el7.ngx.x86_64.rpm
+    state: present
+  notify: 
+    - restart nginx
+
+- name: Create pecrona dir
+  file:
+    path: /usr/share/nginx/html/repo/
+    state: directory
+
+- name: Get percona rmp
+  get_url:
+    url: https://downloads.percona.com/downloads/percona-distribution-mysql-ps/percona-distribution-mysql-ps-8.0.28/binary/redhat/8/x86_64/percona-orchestrator-3.2.6-2.el8.x86_64.rpm                                                                   
+    dest: /usr/share/nginx/html/repo/
+
+- name: Copy rmp on repo
+  copy:
+    src: /root/rpmbuild/RPMS/x86_64/nginx-1.20.2-1.el7.ngx.x86_64.rpm
+    dest: /usr/share/nginx/html/repo/
+    remote_src: yes
+
+- name: Create repo
+  shell: "createrepo /usr/share/nginx/html/repo/"
+
+- name: Create NGINX defualt config file from template
+  template:
+    src: templates/default.conf.j2
+    dest: /etc/nginx/conf.d/default.conf
+  notify: 
+    - reload nginx
+
+- name: Add repo to yum.repos.d
+  template:
+    src: templates/freemax.repo.j2
+    dest: /etc/yum.repos.d/freemax.repo
