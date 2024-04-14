@@ -67,7 +67,7 @@ tree
 - Уставливает собранный Nginx
 - Создает репозиторий и размещает там ранее собранный RMP
 
-4. В результе выполнения playbooks/build_nginx.yml:
+4. В результе выполнения **playbooks/build_nginx.yml**:
 ```
 ansible-playbook playbooks/build_nginx.yml
 
